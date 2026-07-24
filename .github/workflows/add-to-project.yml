@@ -1,0 +1,11 @@
+name: Add issue to Organization Projects
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add:
+    uses: my-org/.github/.github/workflows/add-to-project.yml@main
+    secrets:
+      PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
