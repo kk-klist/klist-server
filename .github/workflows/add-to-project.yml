@@ -6,6 +6,6 @@ on:
 
 jobs:
   add:
-    uses: my-org/.github/.github/workflows/add-to-project.yml@main
+    uses: kk-klist/.github/.github/workflows/add-to-project.yml@main
     secrets:
       PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
