@@ -16,6 +16,7 @@
 | [exception-handling.md](./exception-handling.md) | 예외 클래스, GlobalExceptionHandler, 로깅, 트랜잭션-예외 관계, HTTP 상태코드/ErrorCode 매핑 |
 | [unit-test-convention.md](./unit-test-convention.md) | 단위 테스트 원칙, 네이밍, 픽스쳐, 레이어별 테스트 지침 |
 | [querydsl-convention.md](./querydsl-convention.md) | QueryDSL 사용 규칙 |
+| [collaboration-convention.md](./collaboration-convention.md) | 이슈·라벨·브랜치·커밋·PR 규칙, 칸반 보드 운영 방식 |
 
 ## 문서 관리 원칙
 
