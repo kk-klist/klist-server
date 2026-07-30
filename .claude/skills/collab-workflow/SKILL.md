@@ -31,7 +31,6 @@ gh issue create --web
 - `develop`에서 분기하며, 브랜치명은 `feature/이슈번호-작업명` 또는 `fix/이슈번호-작업명` 형식을 따른다.
 
 ```bash
-git checkout develop && git pull
 git checkout -b feature/12-login-api
 ```
 
@@ -43,6 +42,7 @@ git checkout -b feature/12-login-api
 
 - Conventional Commits + 이슈 번호 형식을 지킨다: `feat: 로그인 API 연동 (#12)`
 - 작은 단위로 자주 커밋한다.
+- AI Agent 관련 내용은 포함하지 않는다.
 
 ### 5. 푸시
 
