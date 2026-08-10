@@ -11,9 +11,27 @@ spring:
   jpa:
     open-in-view: false
 
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=2000,expireAfterWrite=15m
+
 weather:
   api:
     base-url: https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0
+
+tour:
+  api:
+    base-url: https://apis.data.go.kr/B551011
+    service-key: ${TOUR_SERVICE_KEY:}
+    mobile-app: KlistPlus
+
+kakao:
+  rest-key: ${KAKAO_REST_KEY:}
+  local:
+    base-url: https://dapi.kakao.com
+  mobility:
+    base-url: https://apis-navi.kakaomobility.com
 
 cors:
   allowed-origins: http://localhost:5173
