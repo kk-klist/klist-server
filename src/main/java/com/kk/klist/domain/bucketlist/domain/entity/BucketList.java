@@ -112,6 +112,16 @@ public class BucketList extends BaseTimeEntity {
         this.imageUrl = imageUrl;
     }
 
+    public void complete(LocalDateTime completionTime) {
+        this.completed = true;
+        this.completedAt = completionTime;
+    }
+
+    public void cancelCompletion() {
+        this.completed = false;
+        this.completedAt = null;
+    }
+
     private void validateCoordinates(BigDecimal latitude, BigDecimal longitude) {
         if ((latitude == null) != (longitude == null)) {
             throw new BucketListException(BucketListErrorCode.INCOMPLETE_COORDINATES);

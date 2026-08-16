@@ -1,6 +1,7 @@
 package com.kk.klist.domain.bucketlist.controller;
 
 import com.kk.klist.domain.bucketlist.dto.request.BucketListCreateRequest;
+import com.kk.klist.domain.bucketlist.dto.request.BucketListCompletionUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.request.BucketListUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListCreateResponse;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListDetailResponse;
@@ -34,6 +35,16 @@ public class BucketListController {
     private static final int DEFAULT_PAGE_SIZE = 10;
 
     private final BucketListService bucketListService;
+
+    @PatchMapping("/{bucketListId}/completion")
+    public ResponseEntity<Void> updateBucketListCompletion(
+            @LoginUser Long userId,
+            @PathVariable Long bucketListId,
+            @Valid @RequestBody BucketListCompletionUpdateRequest request
+    ) {
+        bucketListService.updateBucketListCompletion(userId, bucketListId, request);
+        return ResponseEntity.noContent().build();
+    }
 
     @PatchMapping("/{bucketListId}")
     public ResponseEntity<Void> updateBucketList(

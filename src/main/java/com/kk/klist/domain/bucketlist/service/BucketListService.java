@@ -5,6 +5,7 @@ import com.kk.klist.domain.bucketlist.domain.entity.Category;
 import com.kk.klist.domain.bucketlist.domain.exception.BucketListErrorCode;
 import com.kk.klist.domain.bucketlist.domain.exception.BucketListException;
 import com.kk.klist.domain.bucketlist.dto.request.BucketListCreateRequest;
+import com.kk.klist.domain.bucketlist.dto.request.BucketListCompletionUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.request.BucketListUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListCreateResponse;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListDetailResponse;
@@ -13,6 +14,7 @@ import com.kk.klist.domain.bucketlist.repository.BucketListRepository;
 import com.kk.klist.domain.bucketlist.repository.BucketListSearchCondition;
 import com.kk.klist.domain.bucketlist.repository.CategoryRepository;
 import com.kk.klist.global.response.PageResponse;
+import com.kk.klist.global.util.TimeProvider;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class BucketListService {
 
     private final BucketListRepository bucketListRepository;
     private final CategoryRepository categoryRepository;
+    private final TimeProvider timeProvider;
 
     @Transactional
     public BucketListCreateResponse createBucketList(Long memberId, BucketListCreateRequest request) {
@@ -95,6 +98,17 @@ public class BucketListService {
     public void deleteBucketList(Long memberId, Long bucketListId) {
         BucketList bucketList = findOwnedBucketList(memberId, bucketListId);
         bucketListRepository.delete(bucketList);
+    }
+
+    @Transactional
+    public void updateBucketListCompletion(Long memberId, Long bucketListId,
+            BucketListCompletionUpdateRequest request) {
+        BucketList bucketList = findOwnedBucketList(memberId, bucketListId);
+        if (request.isCompleted()) {
+            bucketList.complete(timeProvider.now());
+            return;
+        }
+        bucketList.cancelCompletion();
     }
 
     private BucketList findOwnedBucketList(Long memberId, Long bucketListId) {
