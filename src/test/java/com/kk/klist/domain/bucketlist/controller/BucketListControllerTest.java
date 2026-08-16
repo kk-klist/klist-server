@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.kk.klist.domain.bucketlist.dto.request.BucketListCreateRequest;
+import com.kk.klist.domain.bucketlist.dto.request.BucketListCompletionUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.request.BucketListUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListCreateResponse;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListDetailResponse;
@@ -61,6 +62,42 @@ class BucketListControllerTest {
 
     @MockitoBean
     private CacheManager cacheManager;
+
+    @Test
+    @DisplayName("PATCH /api/v1/bucket-lists/{id}/completion 요청이 유효하면 204가 반환된다")
+    void updateBucketListCompletion_whenValidRequest_returns204() throws Exception {
+        // given
+        Long memberId = 1L;
+        Long bucketListId = 21L;
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/bucket-lists/{bucketListId}/completion", bucketListId)
+                        .with(authentication(createAuthentication(memberId)))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"isCompleted\":true}"))
+                .andExpect(status().isNoContent());
+        then(bucketListService).should(times(1)).updateBucketListCompletion(
+                eq(memberId), eq(bucketListId), any(BucketListCompletionUpdateRequest.class));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/v1/bucket-lists/{id}/completion의 완료 여부가 없으면 400이 반환된다")
+    void updateBucketListCompletion_whenCompletedMissing_returns400() throws Exception {
+        // given
+        Long memberId = 1L;
+        Long bucketListId = 21L;
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/bucket-lists/{bucketListId}/completion", bucketListId)
+                        .with(authentication(createAuthentication(memberId)))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G002"))
+                .andExpect(jsonPath("$.errors[0].field").value("isCompleted"));
+    }
 
     @Test
     @DisplayName("PATCH /api/v1/bucket-lists/{id} 요청이 유효하면 204가 반환된다")

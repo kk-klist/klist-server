@@ -13,6 +13,7 @@ import com.kk.klist.domain.bucketlist.domain.entity.Category;
 import com.kk.klist.domain.bucketlist.domain.exception.BucketListErrorCode;
 import com.kk.klist.domain.bucketlist.domain.exception.BucketListException;
 import com.kk.klist.domain.bucketlist.dto.request.BucketListCreateRequest;
+import com.kk.klist.domain.bucketlist.dto.request.BucketListCompletionUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.request.BucketListUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListCreateResponse;
 import com.kk.klist.domain.bucketlist.dto.response.BucketListDetailResponse;
@@ -23,7 +24,9 @@ import com.kk.klist.domain.bucketlist.repository.BucketListRepository;
 import com.kk.klist.domain.bucketlist.repository.BucketListSearchCondition;
 import com.kk.klist.domain.bucketlist.repository.CategoryRepository;
 import com.kk.klist.global.response.PageResponse;
+import com.kk.klist.global.util.TimeProvider;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +50,83 @@ class BucketListServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private TimeProvider timeProvider;
+
+    @Test
+    @DisplayName("본인의 버킷리스트를 완료 처리하면 완료 시각이 저장된다")
+    void updateBucketListCompletion_whenCompleted_setsCompletionTime() {
+        // given
+        Long memberId = 1L;
+        Long bucketListId = 21L;
+        LocalDateTime completionTime = LocalDateTime.of(2026, 8, 16, 18, 0);
+        BucketList bucketList = BucketListFixture.incompleteBucketListWithIdAndMemberId(bucketListId, memberId);
+        BucketListCompletionUpdateRequest request = BucketListDtoFixture.completionUpdateRequest(true);
+        given(bucketListRepository.findById(bucketListId)).willReturn(Optional.of(bucketList));
+        given(timeProvider.now()).willReturn(completionTime);
+
+        // when
+        bucketListService.updateBucketListCompletion(memberId, bucketListId, request);
+
+        // then
+        assertThat(bucketList.isCompleted()).isTrue();
+        assertThat(bucketList.getCompletedAt()).isEqualTo(completionTime);
+        then(timeProvider).should(times(1)).now();
+    }
+
+    @Test
+    @DisplayName("본인의 버킷리스트를 완료 취소하면 완료 시각이 초기화된다")
+    void updateBucketListCompletion_whenCanceled_clearsCompletionTime() {
+        // given
+        Long memberId = 1L;
+        Long bucketListId = 21L;
+        BucketList bucketList = BucketListFixture.incompleteBucketListWithIdAndMemberId(bucketListId, memberId);
+        bucketList.complete(LocalDateTime.of(2026, 8, 16, 18, 0));
+        BucketListCompletionUpdateRequest request = BucketListDtoFixture.completionUpdateRequest(false);
+        given(bucketListRepository.findById(bucketListId)).willReturn(Optional.of(bucketList));
+
+        // when
+        bucketListService.updateBucketListCompletion(memberId, bucketListId, request);
+
+        // then
+        assertThat(bucketList.isCompleted()).isFalse();
+        assertThat(bucketList.getCompletedAt()).isNull();
+        then(timeProvider).should(never()).now();
+    }
+
+    @Test
+    @DisplayName("다른 사용자의 버킷리스트 완료 상태를 변경하면 AccessDenied 예외가 발생된다")
+    void updateBucketListCompletion_whenOwnedByOtherMember_throwsAccessDeniedException() {
+        // given
+        Long bucketListId = 21L;
+        BucketList bucketList = BucketListFixture.incompleteBucketListWithIdAndMemberId(bucketListId, 2L);
+        BucketListCompletionUpdateRequest request = BucketListDtoFixture.completionUpdateRequest(true);
+        given(bucketListRepository.findById(bucketListId)).willReturn(Optional.of(bucketList));
+
+        // when & then
+        assertThatThrownBy(() -> bucketListService.updateBucketListCompletion(1L, bucketListId, request))
+                .isInstanceOf(BucketListException.class)
+                .satisfies(error -> assertThat(((BucketListException) error).getErrorCode())
+                        .isEqualTo(BucketListErrorCode.ACCESS_DENIED));
+        then(timeProvider).should(never()).now();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 버킷리스트 완료 상태를 변경하면 BucketListNotFound 예외가 발생된다")
+    void updateBucketListCompletion_whenNotFound_throwsBucketListNotFoundException() {
+        // given
+        Long bucketListId = 999L;
+        BucketListCompletionUpdateRequest request = BucketListDtoFixture.completionUpdateRequest(true);
+        given(bucketListRepository.findById(bucketListId)).willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> bucketListService.updateBucketListCompletion(1L, bucketListId, request))
+                .isInstanceOf(BucketListException.class)
+                .satisfies(error -> assertThat(((BucketListException) error).getErrorCode())
+                        .isEqualTo(BucketListErrorCode.BUCKET_LIST_NOT_FOUND));
+        then(timeProvider).should(never()).now();
+    }
 
     @Test
     @DisplayName("본인의 버킷리스트를 수정하면 요청 정보가 반영된다")

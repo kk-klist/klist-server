@@ -7,6 +7,7 @@ import com.kk.klist.domain.bucketlist.domain.exception.BucketListErrorCode;
 import com.kk.klist.domain.bucketlist.domain.exception.BucketListException;
 import com.kk.klist.domain.bucketlist.fixture.BucketListFixture;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -94,5 +95,35 @@ class BucketListTest {
                 .isInstanceOf(BucketListException.class)
                 .satisfies(error -> assertThat(((BucketListException) error).getErrorCode())
                         .isEqualTo(BucketListErrorCode.INCOMPLETE_COORDINATES));
+    }
+
+    @Test
+    @DisplayName("미완료 버킷리스트를 완료 처리하면 완료 여부와 완료 시각이 변경된다")
+    void updateCompletion_whenCompleted_setsCompletedAt() {
+        // given
+        BucketList bucketList = BucketListFixture.incompleteBucketList();
+        LocalDateTime completionTime = LocalDateTime.of(2026, 8, 16, 18, 0);
+
+        // when
+        bucketList.complete(completionTime);
+
+        // then
+        assertThat(bucketList.isCompleted()).isTrue();
+        assertThat(bucketList.getCompletedAt()).isEqualTo(completionTime);
+    }
+
+    @Test
+    @DisplayName("완료된 버킷리스트를 완료 취소하면 완료 여부가 false이고 완료 시각이 초기화된다")
+    void updateCompletion_whenCanceled_clearsCompletedAt() {
+        // given
+        BucketList bucketList = BucketListFixture.incompleteBucketList();
+        bucketList.complete(LocalDateTime.of(2026, 8, 16, 18, 0));
+
+        // when
+        bucketList.cancelCompletion();
+
+        // then
+        assertThat(bucketList.isCompleted()).isFalse();
+        assertThat(bucketList.getCompletedAt()).isNull();
     }
 }

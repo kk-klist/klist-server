@@ -1,6 +1,7 @@
 package com.kk.klist.domain.bucketlist.fixture;
 
 import com.kk.klist.domain.bucketlist.dto.request.BucketListCreateRequest;
+import com.kk.klist.domain.bucketlist.dto.request.BucketListCompletionUpdateRequest;
 import com.kk.klist.domain.bucketlist.dto.request.BucketListUpdateRequest;
 import java.math.BigDecimal;
 
@@ -26,5 +27,9 @@ public class BucketListDtoFixture {
                 new BigDecimal("37.5446000"), new BigDecimal("127.0557000"),
                 "https://example.com/images/updated.jpg"
         );
+    }
+
+    public static BucketListCompletionUpdateRequest completionUpdateRequest(boolean isCompleted) {
+        return new BucketListCompletionUpdateRequest(isCompleted);
     }
 }
