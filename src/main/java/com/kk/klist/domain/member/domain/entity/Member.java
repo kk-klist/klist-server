@@ -94,6 +94,10 @@ public class Member extends BaseTimeEntity {
         this.profileImageUrl = profileImageUrl;
     }
 
+    public void updatePreferredLanguage(String preferredLanguage) {
+        this.preferredLanguage = preferredLanguage;
+    }
+
     public void updateRefreshToken(String tokenId) {
         this.refreshTokenId = tokenId;
     }
