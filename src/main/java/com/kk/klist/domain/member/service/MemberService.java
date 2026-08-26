@@ -55,4 +55,10 @@ public class MemberService {
         member.updateProfileImage(profileImageUrl);
         return member.getProfileImageUrl();
     }
+
+    @Transactional
+    public void updatePreferredLanguage(Long memberId, String preferredLanguage) {
+        Member member = getById(memberId);
+        member.updatePreferredLanguage(preferredLanguage);
+    }
 }
