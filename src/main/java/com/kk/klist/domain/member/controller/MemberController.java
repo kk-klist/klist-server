@@ -1,5 +1,6 @@
 package com.kk.klist.domain.member.controller;
 
+import com.kk.klist.domain.member.dto.request.PreferredLanguageUpdateRequest;
 import com.kk.klist.domain.member.dto.request.ProfileImageUpdateRequest;
 import com.kk.klist.domain.member.dto.request.ProfileUpdateRequest;
 import com.kk.klist.domain.member.dto.response.MemberMeResponse;
@@ -45,5 +46,13 @@ public class MemberController {
             @Valid @RequestBody ProfileImageUpdateRequest request) {
         String profileImageUrl = memberService.updateProfileImage(memberId, request.profileImage());
         return ResponseEntity.ok(ApiResponse.success(new ProfileImageUpdateResponse(profileImageUrl)));
+    }
+
+    @PatchMapping("/me/language")
+    public ResponseEntity<Void> updatePreferredLanguage(
+            @LoginUser Long memberId,
+            @Valid @RequestBody PreferredLanguageUpdateRequest request) {
+        memberService.updatePreferredLanguage(memberId, request.preferredLanguage());
+        return ResponseEntity.noContent().build();
     }
 }
