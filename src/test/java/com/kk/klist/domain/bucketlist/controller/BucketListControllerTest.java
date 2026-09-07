@@ -173,6 +173,26 @@ class BucketListControllerTest {
     }
 
     @Test
+    @DisplayName("PATCH /api/v1/bucket-lists/{id}의 설명이 10000자를 초과하면 400이 반환된다")
+    void updateBucketList_whenDescriptionExceedsMaxLength_returns400() throws Exception {
+        // given
+        Long memberId = 1L;
+        Long bucketListId = 21L;
+        String tooLongDescription = "a".repeat(10001);
+
+        // when & then
+        mockMvc.perform(patch("/api/v1/bucket-lists/{bucketListId}", bucketListId)
+                        .with(authentication(createAuthentication(memberId)))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validUpdateRequestBody()
+                                .replace("Updated description.", tooLongDescription)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("G002"))
+                .andExpect(jsonPath("$.errors[0].field").value("description"));
+    }
+
+    @Test
     @DisplayName("DELETE /api/v1/bucket-lists/{id} 요청이 유효하면 204가 반환된다")
     void deleteBucketList_whenValidRequest_returns204() throws Exception {
         // given
@@ -343,6 +363,28 @@ class BucketListControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("G002"))
                 .andExpect(jsonPath("$.errors[0].field").value("title"));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/bucket-lists 요청의 설명이 300자를 초과해도 생성된다")
+    void createBucketList_whenDescriptionExceedsLegacyLimit_returns201() throws Exception {
+        // given
+        Long memberId = 1L;
+        String longDescription = "a".repeat(301);
+        given(bucketListService.createBucketList(eq(memberId), any(BucketListCreateRequest.class)))
+                .willReturn(BucketListCreateResponse.from(
+                        BucketListFixture.incompleteBucketListWithIdAndMemberId(21L, memberId)));
+
+        // when & then
+        mockMvc.perform(post("/api/v1/bucket-lists")
+                        .with(authentication(createAuthentication(memberId)))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequestBody().replace(
+                                "Visit famous K-drama shooting locations.", longDescription)))
+                .andExpect(status().isCreated());
+        then(bucketListService).should(times(1))
+                .createBucketList(eq(memberId), any(BucketListCreateRequest.class));
     }
 
     private UsernamePasswordAuthenticationToken createAuthentication(Long memberId) {

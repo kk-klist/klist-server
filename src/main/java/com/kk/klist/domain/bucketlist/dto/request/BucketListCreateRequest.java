@@ -11,7 +11,7 @@ public record BucketListCreateRequest(
         @Size(max = 100, message = "제목은 100자 이하로 입력해주세요.")
         String title,
 
-        @Size(max = 300, message = "설명은 300자 이하로 입력해주세요.")
+        @Size(max = 10000, message = "설명은 10000자 이하로 입력해주세요.")
         String description,
 
         @NotBlank(message = "카테고리는 필수입니다.")

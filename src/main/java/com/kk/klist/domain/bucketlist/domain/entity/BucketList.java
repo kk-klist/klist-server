@@ -44,7 +44,7 @@ public class BucketList extends BaseTimeEntity {
     @Column(nullable = false, length = 100)
     private String title;
 
-    @Column(length = 300)
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(length = 255)
