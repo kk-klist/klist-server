@@ -6,7 +6,7 @@ spring:
     name: klist
 
   profiles:
-    active: local
+    active: ${SPRING_PROFILES_ACTIVE:local}
 
   jpa:
     open-in-view: false
@@ -54,10 +54,10 @@ kakao:
     base-url: https://apis-navi.kakaomobility.com
 
 cors:
-  allowed-origins: http://localhost:5173
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 oauth:
-  client-redirect-uri: http://localhost:5173/oauth/callback
+  client-redirect-uri: ${OAUTH_CLIENT_REDIRECT_URI:http://localhost:5173/oauth/callback}
 
 chatbot:
   base-url: ${CHATBOT_BASE_URL:http://localhost:8081}
