@@ -38,3 +38,6 @@ out/
 
 ### Application
 src/main/resources/application-local.yml
+.env
+.env.*
+!.env.example

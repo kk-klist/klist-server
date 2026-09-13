@@ -1,0 +1,10 @@
+.git
+.github
+.gradle
+.idea
+.claude
+build
+docs
+.env
+.env.*
+src/main/resources/application-local.yml
