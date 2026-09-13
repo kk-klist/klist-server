@@ -7,6 +7,7 @@ public record ChatbotAudioQueryRequest(
         String sessionId,
         Long userId,
         List<ChatbotContextMessage> context,
-        long timeoutMs
+        long timeoutMs,
+        String language
 ) {
 }

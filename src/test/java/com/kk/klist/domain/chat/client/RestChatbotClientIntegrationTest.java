@@ -102,7 +102,7 @@ class RestChatbotClientIntegrationTest {
 
     private ChatbotQueryRequest request() {
         return new ChatbotQueryRequest(
-                "request-id", "session-id", 1L, "질문", List.of(), 30000L);
+                "request-id", "session-id", 1L, "질문", List.of(), 30000L, "ko");
     }
 
     private void handleQuery(HttpExchange exchange) throws IOException {

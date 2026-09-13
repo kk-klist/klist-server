@@ -53,7 +53,7 @@ class ChatbotResponseIntegrationTest {
                 1L,
                 "질문",
                 List.of(),
-                5000L
+                5000L, "ko"
         ), "trace-id");
 
         // then

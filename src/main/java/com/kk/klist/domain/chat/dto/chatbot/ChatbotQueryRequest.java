@@ -8,6 +8,7 @@ public record ChatbotQueryRequest(
         Long userId,
         String message,
         List<ChatbotContextMessage> context,
-        long timeoutMs
+        long timeoutMs,
+        String language
 ) {
 }

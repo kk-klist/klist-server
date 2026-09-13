@@ -23,6 +23,8 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -41,9 +43,10 @@ class RestChatbotClientTest {
         chatbotClient = new RestChatbotClient(builder.build(), "internal-key");
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
     @DisplayName("Chatbot 내부 API에 인증 키와 trace ID 및 질문 요청을 전달한다")
-    void query_whenChatbotResponds_returnsResponse() {
+    void query_whenChatbotResponds_returnsResponse(String language) {
         // given
         ChatbotQueryRequest request = new ChatbotQueryRequest(
                 "request-id",
@@ -51,12 +54,13 @@ class RestChatbotClientTest {
                 1L,
                 "현재 질문",
                 List.of(new ChatbotContextMessage(ChatMessageRole.USER, "이전 질문")),
-                5000L
+                5000L, language
         );
         server.expect(once(), requestTo("http://chatbot/internal/chat/query"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-Internal-Api-Key", "internal-key"))
                 .andExpect(header("X-Trace-Id", "trace-id"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"language\":\"" + language + "\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"requestId\":\"request-id\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"timeoutMs\":5000")))
                 .andRespond(withSuccess(
@@ -80,7 +84,7 @@ class RestChatbotClientTest {
     void query_whenChatbotReturns500_throwsChatbotInternalError() {
         // given
         ChatbotQueryRequest request = new ChatbotQueryRequest(
-                "request-id", "session-id", 1L, "질문", List.of(), 5000L);
+                "request-id", "session-id", 1L, "질문", List.of(), 5000L, "ko");
         server.expect(once(), requestTo("http://chatbot/internal/chat/query"))
                 .andRespond(withServerError());
 
@@ -91,16 +95,17 @@ class RestChatbotClientTest {
                         .isEqualTo(ChatErrorCode.CHATBOT_INTERNAL_ERROR));
     }
 
-    @Test
+    @ParameterizedTest
+    @ValueSource(strings = {"ko", "en"})
     @DisplayName("Chatbot 음성 API에 요청 정보와 음성 파일을 multipart로 전달한다")
-    void queryAudio_whenChatbotResponds_returnsTranscription() {
+    void queryAudio_whenChatbotResponds_returnsTranscription(String language) {
         // given
         ChatbotAudioQueryRequest request = new ChatbotAudioQueryRequest(
                 "request-id",
                 "session-id",
                 1L,
                 List.of(new ChatbotContextMessage(ChatMessageRole.USER, "이전 질문")),
-                5000L
+                5000L, language
         );
         MockMultipartFile audio = new MockMultipartFile(
                 "audio", "question.webm", "audio/webm", "audio-data".getBytes());
@@ -108,6 +113,7 @@ class RestChatbotClientTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("X-Internal-Api-Key", "internal-key"))
                 .andExpect(header("X-Trace-Id", "trace-id"))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"language\":\"" + language + "\"")))
                 .andExpect(header("Content-Type", org.hamcrest.Matchers.containsString("multipart/form-data")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"request\"")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"requestId\":\"request-id\"")))

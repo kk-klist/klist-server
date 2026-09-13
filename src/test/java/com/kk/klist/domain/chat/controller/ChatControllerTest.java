@@ -26,6 +26,7 @@ import com.kk.klist.global.security.auth.Role;
 import com.kk.klist.global.security.jwt.JwtTokenProvider;
 import com.kk.klist.global.security.oauth.OAuth2LoginFailureHandler;
 import com.kk.klist.global.security.oauth.OAuth2LoginSuccessHandler;
+import com.kk.klist.global.security.oauth.CookieOAuth2AuthorizationRequestRepository;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +34,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.cache.CacheManager;
@@ -70,6 +73,9 @@ class ChatControllerTest {
 
     @MockitoBean
     private CacheManager cacheManager;
+
+    @MockitoBean
+    private CookieOAuth2AuthorizationRequestRepository cookieOAuth2AuthorizationRequestRepository;
 
     @Test
     @DisplayName("POST /api/v1/chat/sessions 요청이 인증되면 201과 세션 정보가 반환된다")
@@ -214,7 +220,7 @@ class ChatControllerTest {
                 "경복궁을 추천합니다.",
                 List.of("주변 맛집도 알려줘")
         );
-        given(chatService.queryAudio(userId, "session-id", audio)).willReturn(response);
+        given(chatService.queryAudio(userId, "session-id", audio, null)).willReturn(response);
 
         // when & then
         mockMvc.perform(multipart("/api/v1/chat/query/audio")
@@ -231,14 +237,14 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$.data.transcription").value("서울 관광지를 추천해줘"))
                 .andExpect(jsonPath("$.data.answer").value("경복궁을 추천합니다."))
                 .andExpect(jsonPath("$.data.suggestions[0]").value("주변 맛집도 알려줘"));
-        then(chatService).should(times(1)).queryAudio(userId, "session-id", audio);
+        then(chatService).should(times(1)).queryAudio(userId, "session-id", audio, null);
     }
 
     @Test
     @DisplayName("POST /api/v1/chat/query/audio에 음성 파일이 없으면 400을 반환한다")
     void queryAudio_whenAudioMissing_returns400() throws Exception {
         // given
-        given(chatService.queryAudio(1L, "session-id", null))
+        given(chatService.queryAudio(1L, "session-id", null, null))
                 .willThrow(new ChatException(ChatErrorCode.AUDIO_FILE_EMPTY));
 
         // when & then
@@ -249,6 +255,82 @@ class ChatControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.code").value("CHAT_AUDIO_FILE_EMPTY"));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"ko", "en"})
+    @DisplayName("텍스트 요청에 허용된 언어를 지정하거나 생략하면 서비스에 그대로 전달된다")
+    void query_whenLanguageValid_delegatesRequest(String language) throws Exception {
+        // given
+        String languageField = language == null ? "" : ",\"language\":\"" + language + "\"";
+
+        // when & then
+        mockMvc.perform(post("/api/v1/chat/query")
+                        .with(authentication(createAuthentication(1L)))
+                        .with(csrf())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"sessionId\":\"session-id\",\"message\":\"Recommend Seoul attractions\""
+                                + languageField + "}"))
+                .andExpect(status().isOk());
+        then(chatService).should().query(1L,
+                new ChatQueryRequest("session-id", "Recommend Seoul attractions", language));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ja", "EN", "", " "})
+    @DisplayName("텍스트 요청에 허용되지 않은 언어를 지정하면 400이 반환된다")
+    void query_whenLanguageInvalid_returns400(String language) throws Exception {
+        // given
+        String body = "{\"sessionId\":\"session-id\",\"message\":\"question\",\"language\":\""
+                + language + "\"}";
+
+        // when & then
+        mockMvc.perform(post("/api/v1/chat/query")
+                        .with(authentication(createAuthentication(1L)))
+                        .with(csrf())
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("language"));
+        then(chatService).shouldHaveNoInteractions();
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"ko", "en"})
+    @DisplayName("음성 요청에 허용된 언어를 지정하거나 생략하면 서비스에 그대로 전달된다")
+    void queryAudio_whenLanguageValid_delegatesRequest(String language) throws Exception {
+        // given
+        MockMultipartFile audio = new MockMultipartFile(
+                "audio", "question.webm", "audio/webm", "audio-data".getBytes());
+        var request = multipart("/api/v1/chat/query/audio")
+                .file(audio).param("sessionId", "session-id");
+        if (language != null) {
+            request.param("language", language);
+        }
+
+        // when & then
+        mockMvc.perform(request.with(authentication(createAuthentication(1L))).with(csrf()))
+                .andExpect(status().isOk());
+        then(chatService).should().queryAudio(1L, "session-id", audio, language);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ja", "EN", "", " "})
+    @DisplayName("음성 요청에 허용되지 않은 언어를 지정하면 400이 반환된다")
+    void queryAudio_whenLanguageInvalid_returns400(String language) throws Exception {
+        // given
+        MockMultipartFile audio = new MockMultipartFile(
+                "audio", "question.webm", "audio/webm", "audio-data".getBytes());
+
+        // when & then
+        mockMvc.perform(multipart("/api/v1/chat/query/audio")
+                        .file(audio).param("sessionId", "session-id").param("language", language)
+                        .with(authentication(createAuthentication(1L))).with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("language"));
+        then(chatService).shouldHaveNoInteractions();
     }
 
     private UsernamePasswordAuthenticationToken createAuthentication(Long userId) {

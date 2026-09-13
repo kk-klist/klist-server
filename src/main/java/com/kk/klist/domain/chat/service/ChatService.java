@@ -90,7 +90,8 @@ public class ChatService {
                 userId,
                 request.message(),
                 context,
-                CHATBOT_TIMEOUT_MS
+                CHATBOT_TIMEOUT_MS,
+                request.language() == null ? "ko" : request.language()
         );
 
         ChatbotQueryResponse chatbotResponse = chatbotClient.query(chatbotRequest, traceId);
@@ -108,7 +109,7 @@ public class ChatService {
         return ChatQueryResponse.from(requestId, request.sessionId(), traceId, chatbotResponse);
     }
 
-    public ChatAudioQueryResponse queryAudio(Long userId, String sessionId, MultipartFile audio) {
+    public ChatAudioQueryResponse queryAudio(Long userId, String sessionId, MultipartFile audio, String language) {
         if (audio == null || audio.isEmpty()) {
             throw new ChatException(ChatErrorCode.AUDIO_FILE_EMPTY);
         }
@@ -126,7 +127,8 @@ public class ChatService {
                 sessionId,
                 userId,
                 context,
-                CHATBOT_TIMEOUT_MS
+                CHATBOT_TIMEOUT_MS,
+                language == null ? "ko" : language
         );
 
         ChatbotAudioQueryResponse chatbotResponse = chatbotClient

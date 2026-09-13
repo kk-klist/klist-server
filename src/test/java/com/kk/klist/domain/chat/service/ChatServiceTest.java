@@ -29,6 +29,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.ArgumentCaptor;
@@ -195,13 +197,15 @@ class ChatServiceTest {
         );
     }
 
-    @Test
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"ko", "en"})
     @DisplayName("Chatbot이 COMPLETED를 반환하면 응답을 변환하고 완료된 대화 쌍을 저장한다")
-    void query_whenChatbotCompleted_returnsResponseAndSavesContext() {
+    void query_whenChatbotCompleted_returnsResponseAndSavesContext(String language) {
         // given
         Long userId = 1L;
         String sessionId = "session-id";
-        ChatQueryRequest request = new ChatQueryRequest(sessionId, "현재 질문");
+        ChatQueryRequest request = new ChatQueryRequest(sessionId, "현재 질문", language);
         List<ChatContextMessage> context = List.of(
                 ChatContextMessage.user("이전 질문"),
                 ChatContextMessage.assistant("이전 답변")
@@ -235,6 +239,7 @@ class ChatServiceTest {
         assertThat(chatbotRequest.requestId()).isEqualTo("request-id");
         assertThat(chatbotRequest.sessionId()).isEqualTo(sessionId);
         assertThat(chatbotRequest.userId()).isEqualTo(userId);
+        assertThat(chatbotRequest.language()).isEqualTo(language == null ? "ko" : language);
         assertThat(chatbotRequest.message()).isEqualTo("현재 질문");
         assertThat(chatbotRequest.timeoutMs()).isEqualTo(ChatService.CHATBOT_TIMEOUT_MS);
         assertThat(chatbotRequest.context()).extracting("content")
@@ -271,7 +276,7 @@ class ChatServiceTest {
                 ));
 
         // when
-        ChatQueryResponse response = chatService.query(1L, new ChatQueryRequest(sessionId, "현재 질문"));
+        ChatQueryResponse response = chatService.query(1L, new ChatQueryRequest(sessionId, "현재 질문", null));
 
         // then
         assertThat(response.status()).isEqualTo(status);
@@ -304,7 +309,7 @@ class ChatServiceTest {
                 ));
 
         // when & then
-        assertThatThrownBy(() -> chatService.query(1L, new ChatQueryRequest(sessionId, "현재 질문")))
+        assertThatThrownBy(() -> chatService.query(1L, new ChatQueryRequest(sessionId, "현재 질문", null)))
                 .isInstanceOf(ChatException.class)
                 .satisfies(error -> assertThat(((ChatException) error).getErrorCode())
                         .isEqualTo(ChatErrorCode.CHATBOT_INVALID_RESPONSE));
@@ -324,7 +329,7 @@ class ChatServiceTest {
                 .willThrow(new ChatException(ChatErrorCode.CHATBOT_API_ERROR));
 
         // when & then
-        assertThatThrownBy(() -> chatService.query(1L, new ChatQueryRequest(sessionId, "현재 질문")))
+        assertThatThrownBy(() -> chatService.query(1L, new ChatQueryRequest(sessionId, "현재 질문", null)))
                 .isInstanceOf(ChatException.class)
                 .satisfies(error -> assertThat(((ChatException) error).getErrorCode())
                         .isEqualTo(ChatErrorCode.CHATBOT_API_ERROR));
@@ -345,16 +350,18 @@ class ChatServiceTest {
         given(chatSessionRepository.findOwner(sessionId)).willReturn(Optional.of(2L));
 
         // when & then
-        assertThatThrownBy(() -> chatService.query(1L, new ChatQueryRequest(sessionId, "질문")))
+        assertThatThrownBy(() -> chatService.query(1L, new ChatQueryRequest(sessionId, "질문", null)))
                 .isInstanceOf(ChatException.class);
         then(chatSessionRepository).should(never()).findRecentContext(
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt());
         then(chatbotClient).shouldHaveNoInteractions();
     }
 
-    @Test
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"ko", "en"})
     @DisplayName("음성 질문이 완료되면 변환된 텍스트와 답변을 저장하고 응답한다")
-    void queryAudio_whenChatbotCompleted_savesTranscriptionAndReturnsResponse() {
+    void queryAudio_whenChatbotCompleted_savesTranscriptionAndReturnsResponse(String language) {
         // given
         Long userId = 1L;
         String sessionId = "session-id";
@@ -376,7 +383,7 @@ class ChatServiceTest {
                 ));
 
         // when
-        ChatAudioQueryResponse response = chatService.queryAudio(userId, sessionId, audio);
+        ChatAudioQueryResponse response = chatService.queryAudio(userId, sessionId, audio, language);
 
         // then
         assertThat(response.requestId()).isEqualTo("request-id");
@@ -393,6 +400,7 @@ class ChatServiceTest {
         assertThat(requestCaptor.getValue().requestId()).isEqualTo("request-id");
         assertThat(requestCaptor.getValue().sessionId()).isEqualTo(sessionId);
         assertThat(requestCaptor.getValue().userId()).isEqualTo(userId);
+        assertThat(requestCaptor.getValue().language()).isEqualTo(language == null ? "ko" : language);
         assertThat(requestCaptor.getValue().context()).extracting("content")
                 .containsExactly("이전 질문");
         then(chatSessionRepository).should(times(1)).saveCompletedExchange(
@@ -427,7 +435,7 @@ class ChatServiceTest {
                 ));
 
         // when & then
-        assertThatThrownBy(() -> chatService.queryAudio(1L, sessionId, audio))
+        assertThatThrownBy(() -> chatService.queryAudio(1L, sessionId, audio, null))
                 .isInstanceOf(ChatException.class)
                 .satisfies(error -> assertThat(((ChatException) error).getErrorCode())
                         .isEqualTo(ChatErrorCode.STT_INVALID_RESPONSE));
@@ -448,7 +456,7 @@ class ChatServiceTest {
                 "audio", "question.webm", "audio/webm", new byte[0]);
 
         // when & then
-        assertThatThrownBy(() -> chatService.queryAudio(1L, "session-id", audio))
+        assertThatThrownBy(() -> chatService.queryAudio(1L, "session-id", audio, null))
                 .isInstanceOf(ChatException.class)
                 .satisfies(error -> assertThat(((ChatException) error).getErrorCode())
                         .isEqualTo(ChatErrorCode.AUDIO_FILE_EMPTY));
