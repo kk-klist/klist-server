@@ -42,7 +42,9 @@ weather:
 tour:
   api:
     base-url: https://apis.data.go.kr/B551011
-    service-key: ${TOUR_SERVICE_KEY:}
+    service-key:
+      ko: ${TOUR_SERVICE_KEY_KO:${TOUR_SERVICE_KEY:}}
+      en: ${TOUR_SERVICE_KEY_EN:}
     mobile-app: KlistPlus
 
 kakao:

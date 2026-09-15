@@ -23,9 +23,10 @@ public class RecommendController {
             @RequestParam(required = false) String genre,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(required = false) Integer radius
+            @RequestParam(required = false) Integer radius,
+            @RequestParam(defaultValue = "ko") String lang
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                recommendService.findRecommendations(genre, lat, lng, radius)));
+                recommendService.findRecommendations(genre, lat, lng, radius, lang)));
     }
 }

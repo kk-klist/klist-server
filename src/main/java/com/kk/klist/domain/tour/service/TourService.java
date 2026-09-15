@@ -34,12 +34,10 @@ public class TourService {
     private static final DateTimeFormatter EVENT_DATE_FORMATTER = DateTimeFormatter.BASIC_ISO_DATE;
 
     private final RestClient tourRestClient;
+    private final TourApiLanguageResolver languageResolver;
 
     @Value("${tour.api.base-url}")
     private String baseUrl;
-
-    @Value("${tour.api.service-key}")
-    private String serviceKey;
 
     @Value("${tour.api.mobile-app}")
     private String mobileApp;
@@ -59,7 +57,7 @@ public class TourService {
             params.put("contentTypeId", category);
         }
 
-        JsonNode root = callTourApi("/" + service(lang) + "/locationBasedList2", params);
+        JsonNode root = callTourApi("/" + languageResolver.resolveService(lang) + "/locationBasedList2", params, lang);
         List<TourSpotResponse> spots = parseSpots(root);
         long totalCount = root.path("response").path("body").path("totalCount").asLong();
         log.info("[Tour] 근접 조회 완료. lat={}, lng={}, radius={}, page={}, size={}, count={}",
@@ -74,7 +72,7 @@ public class TourService {
         params.put("arrange", "A");
         params.put("numOfRows", String.valueOf(DEFAULT_SEARCH_ROWS));
 
-        JsonNode root = callTourApi("/" + service(lang) + "/searchKeyword2", params);
+        JsonNode root = callTourApi("/" + languageResolver.resolveService(lang) + "/searchKeyword2", params, lang);
         List<TourSpotResponse> spots = parseSpots(root);
         log.info("[Tour] 키워드 검색 완료. keyword={}, count={}", keyword, spots.size());
         return spots;
@@ -94,7 +92,7 @@ public class TourService {
             params.put("areaCode", areaCode);
         }
 
-        JsonNode root = callTourApi("/" + service(lang) + "/searchFestival2", params);
+        JsonNode root = callTourApi("/" + languageResolver.resolveService(lang) + "/searchFestival2", params, lang);
         List<TourSpotResponse> spots = parseSpots(root);
         log.info("[Tour] 축제 조회 완료. eventStartDate={}, areaCode={}, count={}", date, areaCode, spots.size());
         return spots;
@@ -105,7 +103,8 @@ public class TourService {
         Map<String, String> commonRequestParams = commonParams();
         commonRequestParams.put("contentId", contentId);
 
-        JsonNode commonItem = firstItem(callTourApi("/" + service(lang) + "/detailCommon2", commonRequestParams));
+        String service = languageResolver.resolveService(lang);
+        JsonNode commonItem = firstItem(callTourApi("/" + service + "/detailCommon2", commonRequestParams, lang));
         if (commonItem == null) {
             throw new TourException(TourErrorCode.TOUR_DETAIL_NOT_FOUND);
         }
@@ -113,7 +112,7 @@ public class TourService {
         Map<String, String> imageRequestParams = new LinkedHashMap<>(commonRequestParams);
         imageRequestParams.put("imageYN", "Y");
         List<String> images = new ArrayList<>();
-        for (JsonNode node : itemArray(callTourApi("/" + service(lang) + "/detailImage2", imageRequestParams))) {
+        for (JsonNode node : itemArray(callTourApi("/" + service + "/detailImage2", imageRequestParams, lang))) {
             String url = node.path("originimgurl").asString();
             if (url != null && !url.isBlank()) {
                 images.add(url);
@@ -126,7 +125,7 @@ public class TourService {
             Map<String, String> introRequestParams = commonParams();
             introRequestParams.put("contentId", contentId);
             introRequestParams.put("contentTypeId", contentTypeId);
-            JsonNode introItem = firstItem(callTourApi("/" + service(lang) + "/detailIntro2", introRequestParams));
+            JsonNode introItem = firstItem(callTourApi("/" + service + "/detailIntro2", introRequestParams, lang));
             useTime = firstNonBlank(introItem, "usetime", "opentime", "usetimeculture", "playtime", "opentimefood");
             restDate = firstNonBlank(introItem,
                     "restdate", "restdateculture", "restdatefood", "restdateshopping", "restdateleports");
@@ -154,26 +153,6 @@ public class TourService {
         return response;
     }
 
-    /**
-     * TourAPI 서비스는 언어별로 별도 엔드포인트를 제공한다 (KorService2/EngService2/...).
-     *
-     * <p>언어별 서비스는 공공데이터포털에서 각각 활용신청해야 하며, 미신청 언어는 403 이 된다.
-     * de/fr/es 는 아직 미신청이라 매핑하지 않고 default(국문)로 응답한다.
-     */
-    private String service(String lang) {
-        if (lang == null) {
-            return "KorService2";
-        }
-        return switch (lang) {
-            case "en" -> "EngService2";
-            case "ja" -> "JpnService2";
-            case "zh-CN" -> "ChsService2";
-            case "zh-TW" -> "ChtService2";
-            case "ru" -> "RusService2";
-            default -> "KorService2";
-        };
-    }
-
     private Map<String, String> commonParams() {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("MobileOS", "ETC");
@@ -182,11 +161,12 @@ public class TourService {
         return params;
     }
 
-    private JsonNode callTourApi(String path, Map<String, String> params) {
+    private JsonNode callTourApi(String path, Map<String, String> params, String language) {
         // serviceKey 는 공공데이터포털 Encoding 키를 그대로 써야 하며 uriBuilder 로 조립하면 이중 인코딩된다.
         // RestClient 에 상대 URI 를 넘기면 baseUrl 의 서비스 세그먼트(/B551011)가 잘려나가므로
         // baseUrl 을 포함한 절대 URI 로 직접 조립한다.
-        StringBuilder query = new StringBuilder("serviceKey=").append(serviceKey);
+        StringBuilder query = new StringBuilder("serviceKey=")
+                .append(languageResolver.resolveServiceKey(language));
         params.forEach((key, value) ->
                 query.append('&').append(key).append('=').append(URLEncoder.encode(value, StandardCharsets.UTF_8)));
         URI uri = URI.create(baseUrl + path + "?" + query);
