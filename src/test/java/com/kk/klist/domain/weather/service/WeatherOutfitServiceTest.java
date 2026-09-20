@@ -57,7 +57,7 @@ class WeatherOutfitServiceTest {
             "37.5, NaN"
     })
     void 좌표가_유효범위를_벗어나면_예외가_발생하고_외부_API를_호출하지_않는다(double latitude, double longitude) {
-        assertThatThrownBy(() -> weatherOutfitService.getWeatherOutfit(latitude, longitude))
+        assertThatThrownBy(() -> weatherOutfitService.getWeatherOutfit(latitude, longitude, "ko"))
                 .isInstanceOf(WeatherException.class)
                 .extracting(e -> ((WeatherException) e).getErrorCode())
                 .isEqualTo(WeatherErrorCode.INVALID_COORDINATES);
@@ -76,7 +76,7 @@ class WeatherOutfitServiceTest {
 
         when(responseSpec.body(JsonNode.class)).thenReturn(ncstResponse, fcstResponse);
 
-        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780);
+        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780, "ko");
 
         assertThat(response.weather().temperature()).isEqualTo(26.5);
         assertThat(response.weather().precipitation()).isEqualTo(0.0);
@@ -101,10 +101,20 @@ class WeatherOutfitServiceTest {
 
         when(responseSpec.body(JsonNode.class)).thenReturn(ncstResponse, fcstResponse);
 
-        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780);
+        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780, "ko");
 
         assertThat(response.outfit().additionalTips())
                 .noneMatch(tip -> tip.contains("일교차") || tip.contains("우산"));
+    }
+
+    @Test
+    void lang이_en이면_영어로_응답한다() {
+        when(responseSpec.body(JsonNode.class)).thenReturn(ncstJson(15.0, 0.0, 0, 10.0), fcstJson());
+
+        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780, "en");
+
+        assertThat(response.outfit().items()).containsExactly("Jacket", "Cardigan", "Field jacket", "Tights", "Jeans");
+        assertThat(response.outfit().additionalTips()).containsExactly("Windbreaker recommended, hold onto your hat");
     }
 
     @Test
@@ -114,7 +124,7 @@ class WeatherOutfitServiceTest {
 
         when(responseSpec.body(JsonNode.class)).thenReturn(ncstResponse, fcstResponse);
 
-        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780);
+        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780, "ko");
 
         assertThat(response.weather().condition()).isEqualTo("WINDY");
         assertThat(response.outfit().additionalTips()).containsExactly("바람막이, 모자류 주의");
@@ -124,7 +134,7 @@ class WeatherOutfitServiceTest {
     void 현재_날씨_API_호출이_실패하면_예외가_발생한다() {
         when(responseSpec.body(JsonNode.class)).thenThrow(new RestClientException("연결 실패"));
 
-        assertThatThrownBy(() -> weatherOutfitService.getWeatherOutfit(37.5665, 126.9780))
+        assertThatThrownBy(() -> weatherOutfitService.getWeatherOutfit(37.5665, 126.9780, "ko"))
                 .isInstanceOf(WeatherException.class)
                 .extracting(e -> ((WeatherException) e).getErrorCode())
                 .isEqualTo(WeatherErrorCode.WEATHER_API_ERROR);
@@ -138,7 +148,7 @@ class WeatherOutfitServiceTest {
                 .thenReturn(ncstResponse)
                 .thenThrow(new RestClientException("예보 연결 실패"));
 
-        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780);
+        WeatherOutfitResponse response = weatherOutfitService.getWeatherOutfit(37.5665, 126.9780, "ko");
 
         assertThat(response.weather().temperature()).isEqualTo(10.0);
         assertThat(response.weather().condition()).isEqualTo("RAINY");
@@ -157,7 +167,7 @@ class WeatherOutfitServiceTest {
                 """);
         when(responseSpec.body(JsonNode.class)).thenReturn(failedResponse);
 
-        assertThatThrownBy(() -> weatherOutfitService.getWeatherOutfit(37.5665, 126.9780))
+        assertThatThrownBy(() -> weatherOutfitService.getWeatherOutfit(37.5665, 126.9780, "ko"))
                 .isInstanceOf(WeatherException.class)
                 .extracting(e -> ((WeatherException) e).getErrorCode())
                 .isEqualTo(WeatherErrorCode.WEATHER_API_ERROR);

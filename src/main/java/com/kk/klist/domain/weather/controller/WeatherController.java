@@ -14,13 +14,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class WeatherController {
 
+    private static final String DEFAULT_LANG = "ko";
+
     private final WeatherOutfitService weatherOutfitService;
 
     @GetMapping("/outfit")
     public ApiResponse<WeatherOutfitResponse> getOutfit(
             @RequestParam double latitude,
-            @RequestParam double longitude
+            @RequestParam double longitude,
+            @RequestParam(defaultValue = DEFAULT_LANG) String lang
     ) {
-        return ApiResponse.success(weatherOutfitService.getWeatherOutfit(latitude, longitude));
+        return ApiResponse.success(weatherOutfitService.getWeatherOutfit(latitude, longitude, lang));
     }
 }

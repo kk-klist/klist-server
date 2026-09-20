@@ -40,7 +40,7 @@ public class WeatherOutfitService {
     @Value("${weather.api.key}")
     private String serviceKey;
 
-    public WeatherOutfitResponse getWeatherOutfit(double latitude, double longitude) {
+    public WeatherOutfitResponse getWeatherOutfit(double latitude, double longitude, String lang) {
         validateCoordinates(latitude, longitude);
 
         int[] grid = toGrid(latitude, longitude);
@@ -56,7 +56,7 @@ public class WeatherOutfitService {
                 current.observedAt()
         );
 
-        return new WeatherOutfitResponse(weatherInfo, buildOutfit(current, forecast));
+        return new WeatherOutfitResponse(weatherInfo, buildOutfit(current, forecast, "en".equalsIgnoreCase(lang)));
     }
 
     private void validateCoordinates(double latitude, double longitude) {
@@ -178,16 +178,16 @@ public class WeatherOutfitService {
         }
     }
 
-    private OutfitInfo buildOutfit(CurrentWeather current, List<ForecastSlot> forecast) {
-        TemperatureBand band = resolveTemperatureBand(current.temperature());
-        List<String> tips = new ArrayList<>(resolveConditionTips(current.condition()));
+    private OutfitInfo buildOutfit(CurrentWeather current, List<ForecastSlot> forecast, boolean en) {
+        TemperatureBand band = resolveTemperatureBand(current.temperature(), en);
+        List<String> tips = new ArrayList<>(resolveConditionTips(current.condition(), en));
 
         forecast.stream()
                 .mapToDouble(ForecastSlot::temperature)
                 .max()
                 .ifPresent(maxTemp -> {
                     if (maxTemp - current.temperature() >= TEMPERATURE_DELTA_THRESHOLD) {
-                        tips.add("일교차가 크니 겉옷을 챙기세요.");
+                        tips.add(en ? "Big temperature swing, so bring a jacket." : "일교차가 크니 겉옷을 챙기세요.");
                     }
                 });
 
@@ -196,48 +196,49 @@ public class WeatherOutfitService {
                 .findFirst()
                 .ifPresent(slot -> {
                     long hoursUntil = Duration.between(LocalDateTime.now(), slot.dateTime()).toHours();
-                    String prefix = hoursUntil <= 0 ? "곧" : hoursUntil + "시간 후";
-                    tips.add(prefix + " 비/눈이 예상되니 우산을 준비하세요.");
+                    tips.add(en
+                            ? "Rain or snow expected " + (hoursUntil <= 0 ? "soon" : "in " + hoursUntil + "h") + ", so bring an umbrella."
+                            : (hoursUntil <= 0 ? "곧" : hoursUntil + "시간 후") + " 비/눈이 예상되니 우산을 준비하세요.");
                 });
 
         return new OutfitInfo(band.label(), band.items(), tips);
     }
 
-    private TemperatureBand resolveTemperatureBand(double temperature) {
+    private TemperatureBand resolveTemperatureBand(double temperature, boolean en) {
         if (temperature >= 28) {
-            return new TemperatureBand("28~", List.of("민소매", "반팔", "반바지", "원피스"));
+            return new TemperatureBand("28~", en ? List.of("Tank top", "T-shirt", "Shorts", "Dress") : List.of("민소매", "반팔", "반바지", "원피스"));
         }
         if (temperature >= 23) {
-            return new TemperatureBand("23~27", List.of("반팔", "얇은 셔츠", "반바지", "면바지"));
+            return new TemperatureBand("23~27", en ? List.of("T-shirt", "Light shirt", "Shorts", "Cotton pants") : List.of("반팔", "얇은 셔츠", "반바지", "면바지"));
         }
         if (temperature >= 20) {
-            return new TemperatureBand("20~22", List.of("얇은 가디건", "긴팔", "면바지", "청바지"));
+            return new TemperatureBand("20~22", en ? List.of("Light cardigan", "Long sleeve", "Cotton pants", "Jeans") : List.of("얇은 가디건", "긴팔", "면바지", "청바지"));
         }
         if (temperature >= 17) {
-            return new TemperatureBand("17~19", List.of("얇은 니트", "맨투맨", "가디건", "청바지"));
+            return new TemperatureBand("17~19", en ? List.of("Light knit", "Sweatshirt", "Cardigan", "Jeans") : List.of("얇은 니트", "맨투맨", "가디건", "청바지"));
         }
         if (temperature >= 12) {
-            return new TemperatureBand("12~16", List.of("자켓", "가디건", "야상", "스타킹", "청바지"));
+            return new TemperatureBand("12~16", en ? List.of("Jacket", "Cardigan", "Field jacket", "Tights", "Jeans") : List.of("자켓", "가디건", "야상", "스타킹", "청바지"));
         }
         if (temperature >= 9) {
-            return new TemperatureBand("9~11", List.of("트렌치코트", "야상", "자켓", "니트", "청바지"));
+            return new TemperatureBand("9~11", en ? List.of("Trench coat", "Field jacket", "Jacket", "Knit", "Jeans") : List.of("트렌치코트", "야상", "자켓", "니트", "청바지"));
         }
         if (temperature >= 5) {
-            return new TemperatureBand("5~8", List.of("코트", "가죽자켓", "히트텍", "니트", "레깅스"));
+            return new TemperatureBand("5~8", en ? List.of("Coat", "Leather jacket", "Thermal wear", "Knit", "Leggings") : List.of("코트", "가죽자켓", "히트텍", "니트", "레깅스"));
         }
-        return new TemperatureBand("~4", List.of("패딩", "두꺼운 코트", "목도리", "기모 제품"));
+        return new TemperatureBand("~4", en ? List.of("Padded jacket", "Heavy coat", "Scarf", "Fleece-lined items") : List.of("패딩", "두꺼운 코트", "목도리", "기모 제품"));
     }
 
-    private List<String> resolveConditionTips(WeatherCondition condition) {
+    private List<String> resolveConditionTips(WeatherCondition condition, boolean en) {
         List<String> tips = new ArrayList<>();
         switch (condition) {
-            case RAINY, SLEET, SHOWER -> tips.add("우산, 방수 아우터, 장화 권장");
-            case SNOWY -> tips.add("방한·방수 신발, 미끄럼 주의");
-            case WINDY -> tips.add("바람막이, 모자류 주의");
+            case RAINY, SLEET, SHOWER -> tips.add(en ? "Umbrella, waterproof outerwear, rain boots recommended" : "우산, 방수 아우터, 장화 권장");
+            case SNOWY -> tips.add(en ? "Warm waterproof shoes, watch for slippery roads" : "방한·방수 신발, 미끄럼 주의");
+            case WINDY -> tips.add(en ? "Windbreaker recommended, hold onto your hat" : "바람막이, 모자류 주의");
             case SUNNY -> {
                 int month = LocalDate.now().getMonthValue();
                 if (month >= SUMMER_MONTH_START && month <= SUMMER_MONTH_END) {
-                    tips.add("모자, 선글라스, 선크림 권장");
+                    tips.add(en ? "Hat, sunglasses, sunscreen recommended" : "모자, 선글라스, 선크림 권장");
                 }
             }
         }
